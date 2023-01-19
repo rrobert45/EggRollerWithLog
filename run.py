@@ -12,7 +12,7 @@ relay = 17
 
 # Set the interval for logging data and turning on the relay (in seconds)
 log_interval = 300 # 5 minutes
-relay_interval = 14280 # 4 hours
+relay_interval = 14400 # 4 hours
 
 # Initialize the GPIO pin for the relay
 GPIO.setmode(GPIO.BCM)
@@ -21,11 +21,14 @@ GPIO.setup(relay, GPIO.OUT)
 # Open the CSV files for writing
 temp_humidity_file = open('temp_humidity_data.csv', 'w', newline='')
 temp_humidity_writer = csv.writer(temp_humidity_file)
-temp_humidity_writer.writerow(['Time', 'Temperature', 'Humidity'])
+temp_humidity_writer.writerow(['Time', 'Temperature(F)', 'Humidity(%)'])
 
 relay_file = open('relay_data.csv', 'w', newline='')
 relay_writer = csv.writer(relay_file)
 relay_writer.writerow(['Time', 'Relay Status'])
+
+# Store the time when the relay was last turned on
+last_relay_on = time.time()
 
 try:
     while True:
@@ -34,13 +37,15 @@ try:
 
         # Log the temperature and humidity data
         if humidity is not None and temperature is not None:
-            temp_humidity_writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), temperature, humidity])
+            temperature = (temperature * 9/5) + 32
+            temp_humidity_writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), round(temperature,0), round(humidity,0)])
             temp_humidity_file.flush()
         else:
             print('Failed to read data from sensor')
 
         # Check if it's time to turn on the relay
-        if time.time() % relay_interval < 2:
+        current_time = time.time()
+        if current_time - last_relay_on >= relay_interval:
             # Turn on the relay for 2 minutes
             GPIO.output(relay, GPIO.HIGH)
             relay_writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), "ON"])
@@ -50,15 +55,20 @@ try:
             relay_writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), "OFF"])
             relay_file.flush()
             print("relay has been turned on")
+            last_relay_on = current_time
         else:
             relay_writer.writerow([time.strftime("%Y-%m-%d %H:%M:%S"), "OFF"])
             relay_file.flush()
-        # Wait for the next log interval
+
+             # Wait for the next log interval
         time.sleep(log_interval)
+
 except KeyboardInterrupt:
     pass
+
 finally:
-    GPIO.cleanup()
     # Close the CSV files
     temp_humidity_file.close()
     relay_file.close()
+    # Clean up the GPIO pins
+    GPIO.cleanup()
