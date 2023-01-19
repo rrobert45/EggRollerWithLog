@@ -12,7 +12,7 @@ relay = 17
 
 # Set the interval for logging data and turning on the relay (in seconds)
 log_interval = 300 # 5 minutes
-relay_interval = 14400 # 4 hours
+relay_interval = 14280 # 4 hours
 
 # Initialize the GPIO pin for the relay
 GPIO.setmode(GPIO.BCM)
